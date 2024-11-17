@@ -44,7 +44,9 @@ func main() {
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-			io.WriteString(w, "request duration "+d.String())
+			if _, err := io.WriteString(w, "request duration "+d.String()); err != nil {
+				log.Printf("write error: %v\n", err)
+			}
 		}),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx

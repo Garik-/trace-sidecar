@@ -6,5 +6,5 @@ this is a concept sidecar container that can take metrics for http requests
 - prometheus metrics exporter
 - graceful shutdown
 - configuration via environment variables
-- linter 
+- ~~linter~~
 - external and internal ports so that metric data does not get into the external network

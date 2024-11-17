@@ -1,6 +1,6 @@
 module github.com/Garik-/trace-sidecar
 
-go 1.23.0
+go 1.23
 
 require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0
