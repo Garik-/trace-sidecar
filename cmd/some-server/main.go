@@ -31,9 +31,6 @@ func randRange(from, to int64) int64 {
 }
 
 const (
-	readTimeout       = 1 * time.Second
-	writeTimeout      = 1 * time.Second
-	idleTimeout       = 30 * time.Second
 	readHeaderTimeout = 2 * time.Second
 )
 
@@ -42,9 +39,6 @@ func main() {
 	defer stop()
 
 	httpServer := &http.Server{
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
 		Addr:              net.JoinHostPort(defaultHost, defaultPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

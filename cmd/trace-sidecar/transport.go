@@ -11,17 +11,11 @@ import (
 )
 
 const (
-	readTimeout       = 1 * time.Second
-	writeTimeout      = 1 * time.Second
-	idleTimeout       = 30 * time.Second
 	readHeaderTimeout = 2 * time.Second
 )
 
 func newServer(ctx context.Context, addr string) *http.Server {
 	return &http.Server{
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
 		Addr:              addr,
 		BaseContext: func(_ net.Listener) context.Context {
