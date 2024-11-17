@@ -12,6 +12,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
@@ -40,7 +42,17 @@ func initServer(ctx context.Context, addr string) *http.Server {
 
 	handler := func(p *httputil.ReverseProxy) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Println(r.URL)
+
+			attr := semconv.HTTPRoute(r.URL.String())
+
+			log.Println(attr.Value.AsString())
+
+			labeler, _ := otelhttp.LabelerFromContext(r.Context())
+			labeler.Add(attr)
+
+			span := trace.SpanFromContext(r.Context())
+			span.SetAttributes(attr)
+
 			r.Host = target.Host
 			p.ServeHTTP(w, r)
 		})
