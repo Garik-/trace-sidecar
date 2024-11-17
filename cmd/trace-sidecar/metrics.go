@@ -8,9 +8,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-func initMeterProvider() (func(), error) {
+func initMeterProvider(s service) (func(), error) {
 	// The exporter embeds a default OpenTelemetry Reader and
 	// implements prometheus.Collector, allowing it to be used as
 	// both a Reader and Collector.
@@ -19,7 +21,26 @@ func initMeterProvider() (func(), error) {
 		return nil, fmt.Errorf("exporter error: %w", err)
 	}
 
-	provider := metric.NewMeterProvider(metric.WithReader(exporter))
+	r, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName(s.name),
+			semconv.ServiceInstanceID(s.instanceID),
+			semconv.ServiceVersion(s.version),
+			semconv.ServiceNamespace(s.namespace),
+		),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("resource merge error: %w", err)
+	}
+
+	provider := metric.NewMeterProvider(
+		metric.WithReader(exporter),
+		metric.WithResource(r),
+	)
+
 	otel.SetMeterProvider(provider)
 
 	return func() {

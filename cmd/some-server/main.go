@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"io"
 	"log"
-	"math/rand/v2"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -23,18 +24,30 @@ const (
 	maxRequestDuration = 2000 // ms
 )
 
-func randRange(min, max int) int {
-	return rand.IntN(max-min) + min
+func randRange(from, to int64) int64 {
+	n, _ := rand.Int(rand.Reader, big.NewInt(to-from))
+
+	return n.Int64() + from
 }
+
+const (
+	readTimeout       = 1 * time.Second
+	writeTimeout      = 1 * time.Second
+	idleTimeout       = 30 * time.Second
+	readHeaderTimeout = 2 * time.Second
+)
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	httpServer := &http.Server{
-		Addr: net.JoinHostPort(defaultHost, defaultPort),
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
+		Addr:              net.JoinHostPort(defaultHost, defaultPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			d := time.Duration(randRange(minRequestDuration, maxRequestDuration)) * time.Millisecond
 
 			select {
@@ -45,7 +58,7 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 
-			if _, err := io.WriteString(w, "request duration "+d.String()); err != nil {
+			if _, err := io.WriteString(w, r.URL.Path+" request duration "+d.String()); err != nil {
 				log.Printf("write error: %v\n", err)
 			}
 		}),
@@ -65,6 +78,6 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("exit reason: %s\n", err)
+		log.Printf("exit reason: %s\n", err)
 	}
 }

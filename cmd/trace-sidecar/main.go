@@ -12,39 +12,37 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	defaultAddr  = "localhost:8001"
-	internalAddr = "localhost:2223"
-	serviceAddr  = "http://localhost:8000"
-)
+func statusOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+func statusOKHandler() http.Handler                   { return http.HandlerFunc(statusOK) }
 
 func initInternalServer(ctx context.Context, addr string) *http.Server {
 	mux := http.NewServeMux()
 	srv := newServer(ctx, addr)
 	srv.Handler = mux
+
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/livez", statusOKHandler())
+	mux.Handle("/readyz", statusOKHandler())
 
 	return srv
 }
 
-func initServer(ctx context.Context, addr string) *http.Server {
-	srv := newServer(ctx, addr)
+func initServer(ctx context.Context, cfg *config) *http.Server {
+	srv := newServer(ctx, cfg.addr)
 
-	target, _ := url.Parse(serviceAddr)
+	target, _ := url.Parse(cfg.targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
 	handler := func(p *httputil.ReverseProxy) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			attr := semconv.HTTPRoute(r.URL.String())
-
+			attr := semconv.HTTPRoute(r.URL.Path)
 			log.Println(attr.Value.AsString())
 
 			labeler, _ := otelhttp.LabelerFromContext(r.Context())
@@ -58,8 +56,7 @@ func initServer(ctx context.Context, addr string) *http.Server {
 		})
 	}
 
-	// TODO: need custom middleware
-	srv.Handler = otelhttp.NewHandler(handler(proxy), "sidecar")
+	srv.Handler = otelhttp.NewHandler(handler(proxy), cfg.service.name)
 
 	return srv
 }
@@ -68,19 +65,22 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	shutdownMeterProvider, err := initMeterProvider()
+	cfg := newConfig()
+	shutdownMeterProvider, err := initMeterProvider(cfg.service)
+
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 
 	defer shutdownMeterProvider()
 
 	g, gCtx := errgroup.WithContext(ctx)
 
-	listenAndServe(g, gCtx, initServer(ctx, defaultAddr))
-	listenAndServe(g, gCtx, initInternalServer(ctx, internalAddr))
+	listenAndServe(g, gCtx, initServer(ctx, cfg))
+	listenAndServe(g, gCtx, initInternalServer(ctx, cfg.internalAddr))
 
 	if err := g.Wait(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
