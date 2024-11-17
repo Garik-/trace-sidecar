@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,7 +20,7 @@ import (
 const (
 	defaultAddr  = "localhost:8001"
 	internalAddr = "localhost:2223"
-	serviceAddr  = "localhost:8000"
+	serviceAddr  = "http://localhost:8000"
 )
 
 func initInternalServer(ctx context.Context, addr string) *http.Server {
@@ -31,10 +33,21 @@ func initInternalServer(ctx context.Context, addr string) *http.Server {
 }
 
 func initServer(ctx context.Context, addr string) *http.Server {
-	client := newPooledClient()
-
 	srv := newServer(ctx, addr)
-	srv.Handler = otelhttp.NewHandler(sidecarHandler(serviceAddr, client), "sidecar")
+
+	target, _ := url.Parse(serviceAddr)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	handler := func(p *httputil.ReverseProxy) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Println(r.URL)
+			r.Host = target.Host
+			p.ServeHTTP(w, r)
+		})
+	}
+
+	// TODO: need custom middleware
+	srv.Handler = otelhttp.NewHandler(handler(proxy), "sidecar")
 
 	return srv
 }
