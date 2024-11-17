@@ -131,9 +131,12 @@ func main() {
 
 			copyHeader(w.Header(), resp.Header)
 			w.WriteHeader(resp.StatusCode)
-			if _, err := io.Copy(w, resp.Body); err != nil {
-				log.Printf("io copy error: %v\n", err)
-			}
+
+			io.Copy(w, resp.Body)
+
+			// if _, err := io.Copy(w, resp.Body); err != nil {
+			// 	log.Printf("io copy error: %v\n", err)
+			// }
 		}), "sidecar"),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
