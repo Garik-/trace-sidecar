@@ -12,3 +12,6 @@ this is a concept sidecar container that can take metrics for http requests
 - load testing
 - dockerfile
 - local deploy
+
+## server lifecycle
+![server lifecycle](https://ieftimov.com/make-resilient-golang-net-http-servers-using-timeouts-deadlines-context-cancellation/request-lifecycle-timeouts.png "server lifecycle")
