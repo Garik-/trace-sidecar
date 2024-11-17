@@ -44,6 +44,7 @@ func main() {
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+
 			if _, err := io.WriteString(w, "request duration "+d.String()); err != nil {
 				log.Printf("write error: %v\n", err)
 			}
