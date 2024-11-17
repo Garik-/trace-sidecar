@@ -1,0 +1,5 @@
+.github
+.idea/
+bin/
+.DS_Store
+.git

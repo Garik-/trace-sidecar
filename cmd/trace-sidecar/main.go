@@ -14,7 +14,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
-
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,6 +65,8 @@ func main() {
 	defer stop()
 
 	cfg := newConfig()
+	log.Printf("config: %+v\n", cfg)
+
 	shutdownMeterProvider, err := initMeterProvider(cfg.service)
 
 	if err != nil {
